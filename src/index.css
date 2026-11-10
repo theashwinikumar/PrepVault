@@ -1,0 +1,189 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  background: #fafafa;
+  color: #1a1a1a;
+}
+
+/* Custom scrollbar — Apple-thin, barely visible */
+.scrollbar-thin::-webkit-scrollbar { width: 4px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 9999px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-fadeIn { animation: fadeIn 0.35s ease-out both; }
+.animate-fadeInScale { animation: fadeInScale 0.3s ease-out both; }
+.animate-slideUp { animation: slideUp 0.4s ease-out both; }
+.animate-float { animation: float 3s ease-in-out infinite; }
+
+/* Staggered animation delays */
+.delay-75 { animation-delay: 75ms; }
+.delay-100 { animation-delay: 100ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+
+/* Premium prose styling for AI answers */
+.prose-clean p { margin: 0.5em 0; }
+.prose-clean ul, .prose-clean ol { margin: 0.5em 0; padding-left: 1.5em; }
+.prose-clean li { margin: 0.25em 0; }
+.prose-clean code {
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
+  border-radius: 5px;
+  padding: 0.15em 0.4em;
+  font-size: 0.875em;
+  font-family: "SF Mono", "Fira Code", monospace;
+  color: #18181b;
+}
+.prose-clean pre {
+  background: #fafafa;
+  border: 1px solid #e4e4e7;
+  border-radius: 8px;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+  margin: 0.75em 0;
+}
+.prose-clean pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 0.8125em;
+}
+.prose-clean strong { font-weight: 600; color: #09090b; }
+.prose-clean h1, .prose-clean h2, .prose-clean h3, .prose-clean h4 {
+  font-weight: 600;
+  color: #09090b;
+  margin: 1em 0 0.5em;
+}
+
+/* Selection color */
+::selection {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Accessibility
+   ───────────────────────────────────────────────────────────── */
+
+/* Keyboard focus ring.
+   :focus-visible rather than :focus, so the ring appears for keyboard and
+   assistive-tech users without putting an outline on every mouse click.
+   Previously nothing was styled, so Tailwind's preflight reset left keyboard
+   users with no visible focus at all. */
+:focus-visible {
+  outline: 2px solid #18181b;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Anything that explicitly clears the outline must still show a ring. */
+.focus\:outline-none:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #18181b;
+  outline-offset: 2px;
+}
+
+/* Skip link: first tab stop, hidden until focused. Lets keyboard users jump
+   past the nav instead of tabbing through it on every page. */
+.skip-link {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, -120%);
+  z-index: 100;
+  background: #18181b;
+  color: #fff;
+  padding: 0.6rem 1.1rem;
+  border-radius: 0 0 0.6rem 0.6rem;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: transform 0.18s ease-out;
+}
+.skip-link:focus {
+  transform: translate(-50%, 0);
+}
+
+/* Screen-reader-only text that stays in the accessibility tree. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Respect a system-level request for less motion.
+   The site leans on fadeIn/slideUp/float animations; for users who have asked
+   for reduced motion these are a vestibular trigger, so they are collapsed to
+   near-instant rather than removed (removal can break animation-fill-mode
+   states that elements depend on to be visible at all). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Comfortable tap targets on touch devices. The UI uses a lot of 11-12px
+   controls, which are below the ~44px recommended minimum. */
+@media (pointer: coarse) {
+  button,
+  a[role="button"],
+  [role="tab"] {
+    min-height: 40px;
+  }
+}

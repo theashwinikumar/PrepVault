@@ -1,0 +1,23 @@
+{
+  "name": "cmrit-placement-api",
+  "version": "1.0.0",
+  "description": "MongoDB backend API for CMRIT Placement Portal",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "seed": "node scripts/seed.js"
+  },
+  "dependencies": {
+    "cloudinary": "^2.10.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "google-auth-library": "^10.7.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.7.1",
+    "nodemailer": "^9.0.1",
+    "razorpay": "^2.9.6"
+  }
+}
