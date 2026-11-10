@@ -16,7 +16,7 @@ if (!JWT_SECRET) {
   console.error(
     'FATAL: JWT_SECRET is not set. Sign-in cannot issue sessions and all ' +
       'authenticated routes will fail. Set JWT_SECRET in the Vercel project ' +
-      'environment variables (same value as server/.env) and redeploy.'
+      'environment variables (same value as backend/.env) and redeploy.'
   );
 }
 

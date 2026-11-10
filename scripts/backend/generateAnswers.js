@@ -4,10 +4,10 @@
  * Answers are keyed by normalised question text, so duplicates across drives
  * cost one generation, not one per company.
  *
- *   node server/scripts/generateAnswers.js                 # dry run: what would it do
- *   node server/scripts/generateAnswers.js --commit        # generate everything missing
- *   node server/scripts/generateAnswers.js --commit --limit 50
- *   node server/scripts/generateAnswers.js --commit --only-free
+ *   node scripts/backend/generateAnswers.js                 # dry run: what would it do
+ *   node scripts/backend/generateAnswers.js --commit        # generate everything missing
+ *   node scripts/backend/generateAnswers.js --commit --limit 50
+ *   node scripts/backend/generateAnswers.js --commit --only-free
  *
  * Resumable: already-cached questions are skipped, so an interrupted run picks
  * up where it stopped. Safe to re-run.
@@ -16,15 +16,15 @@
  * are the ones that appear on public company pages and feed the FAQPage schema,
  * so they are what actually matters for search. Start there.
  */
-require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+require('dotenv').config({ path: require('path').join(__dirname, '..', '..', 'backend', '.env') });
 const mongoose = require('mongoose');
 
-const TechnicalQuestion = require('../models/TechnicalQuestion');
-const HRQuestion = require('../models/HRQuestion');
-const Answer = require('../models/Answer');
-const { questionHash, generateAnswer } = require('../utils/answerService');
-const { sampleTechnical, sampleHr } = require('../utils/sampleQuestions');
-const { AI } = require('../config/ai');
+const TechnicalQuestion = require('../../backend/models/TechnicalQuestion');
+const HRQuestion = require('../../backend/models/HRQuestion');
+const Answer = require('../../backend/models/Answer');
+const { questionHash, generateAnswer } = require('../../backend/utils/answerService');
+const { sampleTechnical, sampleHr } = require('../../backend/utils/sampleQuestions');
+const { AI } = require('../../backend/config/ai');
 
 const args = process.argv.slice(2);
 const COMMIT = args.includes('--commit');

@@ -2,12 +2,12 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-const connectDB = require('../config/db');
-const TechnicalQuestion = require('../models/TechnicalQuestion');
-const HRQuestion = require('../models/HRQuestion');
+const connectDB = require('../../backend/config/db');
+const TechnicalQuestion = require('../../backend/models/TechnicalQuestion');
+const HRQuestion = require('../../backend/models/HRQuestion');
 
-const TECH_JSON_PATH = path.join(__dirname, '..', '..', 'public', 'interview_questions_combined.json');
-const HR_JSON_PATH = path.join(__dirname, '..', '..', 'public', 'hr_questions_company_wise.json');
+const TECH_JSON_PATH = path.join(__dirname, '..', '..', 'data', 'backend', 'interview_questions_combined.json');
+const HR_JSON_PATH = path.join(__dirname, '..', '..', 'data', 'backend', 'hr_questions_company_wise.json');
 
 async function seed() {
   console.log('\n🌱 CMRIT Placement Database Seeder\n');

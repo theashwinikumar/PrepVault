@@ -13,6 +13,7 @@ const STUB = fileURLToPath(new URL('./scripts/pdfjs-stub.js', import.meta.url))
  * react/react-dom) and emits a plain ESM module rather than a browser bundle.
  */
 export default defineConfig({
+  root: 'frontend',
   plugins: [react()],
   resolve: {
     // Exact-match regexes, not a bare string. A string alias prefix-matches, so
@@ -25,7 +26,7 @@ export default defineConfig({
   },
   build: {
     ssr: 'src/prerender-entry.jsx',
-    outDir: 'dist/prerender-entry',
+    outDir: '../dist/prerender-entry',
     emptyOutDir: true,
     rollupOptions: {
       output: { entryFileNames: 'entry.js', format: 'es' },

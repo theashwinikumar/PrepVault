@@ -6,27 +6,27 @@
  * questions to render there. A divergence would silently serve one company's
  * answers on another company's page.
  *
- *   node server/scripts/checkSlugParity.js
+ *   node scripts/backend/checkSlugParity.js
  *
  * Exits non-zero on mismatch, so it is safe to run in CI.
  */
 const path = require('path');
 const { readFileSync } = require('fs');
-const { slugify: cjsSlugify } = require('../utils/slug');
+const { slugify: cjsSlugify } = require('../../backend/utils/slug');
 
 const ROOT = path.join(__dirname, '..', '..');
 
 async function main() {
   const esm = await import(
     // A file:// URL is required for a Windows absolute path.
-    'file://' + path.join(ROOT, 'src', 'utils', 'slug.js').replace(/\\/g, '/')
+    'file://' + path.join(ROOT, 'frontend', 'src', 'utils', 'slug.js').replace(/\\/g, '/')
   );
 
   const tech = JSON.parse(
-    readFileSync(path.join(ROOT, 'server/data/interview_questions_combined.json'), 'utf8')
+    readFileSync(path.join(ROOT, 'data/backend/interview_questions_combined.json'), 'utf8')
   );
   const hr = JSON.parse(
-    readFileSync(path.join(ROOT, 'server/data/hr_questions_company_wise.json'), 'utf8')
+    readFileSync(path.join(ROOT, 'data/backend/hr_questions_company_wise.json'), 'utf8')
   );
 
   const names = new Set(
@@ -54,7 +54,7 @@ async function main() {
   }
 
   if (mismatches) {
-    console.error(`\nFAIL: ${mismatches} slug mismatch(es) between server/utils/slug.js and src/utils/slug.js`);
+    console.error(`\nFAIL: ${mismatches} slug mismatch(es) between backend/utils/slug.js and frontend/src/utils/slug.js`);
     process.exit(1);
   }
   console.log(`slug parity OK (${names.size} company names + ${extra.length} edge cases)`);

@@ -1,7 +1,7 @@
 /**
- * Generates public/sitemap.xml at build time.
+ * Generates frontend/public/sitemap.xml at build time.
  *
- * Reads the question bank from server/data so the company list is always in
+ * Reads the question bank from data/backend so the company list is always in
  * step with the actual content, rather than a hand-maintained list that silently
  * goes stale every time a drive is added.
  *
@@ -11,7 +11,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { slugify, groupCompanies } from '../src/utils/slug.js';
+import { slugify, groupCompanies } from '../frontend/src/utils/slug.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = process.env.SITE_URL || 'https://cmritplacement.vercel.app';
@@ -36,8 +36,8 @@ function readJson(relPath) {
   return JSON.parse(readFileSync(full, 'utf8'));
 }
 
-const tech = readJson('server/data/interview_questions_combined.json');
-const hr = readJson('server/data/hr_questions_company_wise.json');
+const tech = readJson('data/backend/interview_questions_combined.json');
+const hr = readJson('data/backend/hr_questions_company_wise.json');
 
 // Static, always-present routes.
 const urls = [
@@ -86,7 +86,7 @@ ${body}
 </urlset>
 `;
 
-writeFileSync(join(ROOT, 'public/sitemap.xml'), xml, 'utf8');
+writeFileSync(join(ROOT, 'frontend/public/sitemap.xml'), xml, 'utf8');
 
 console.log(`sitemap.xml: ${urls.length} URLs (${grouped.size} companies)`);
 if (!COMPANY_ROUTES_EXIST) {

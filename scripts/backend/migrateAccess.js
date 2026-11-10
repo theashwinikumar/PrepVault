@@ -7,12 +7,12 @@
  *
  * Safe to re-run: existing (email, product) pairs are skipped, not overwritten.
  *
- *   node server/scripts/migrateAccess.js          # dry run, prints the plan
- *   node server/scripts/migrateAccess.js --commit # actually writes
+ *   node scripts/backend/migrateAccess.js          # dry run, prints the plan
+ *   node scripts/backend/migrateAccess.js --commit # actually writes
  */
 require('dotenv').config();
 const mongoose = require('mongoose');
-const Access = require('../models/Access');
+const Access = require('../../backend/models/Access');
 
 const COMMIT = process.argv.includes('--commit');
 

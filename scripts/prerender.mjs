@@ -9,7 +9,7 @@
  * entire SEO surface was invisible to anything but a JS-executing crawler.
  *
  * Runs AFTER `vite build`, against the built dist/index.html as its template.
- * Data comes from server/data (questions) and MongoDB (cached answers, if
+ * Data comes from data/backend (questions) and MongoDB (cached answers, if
  * MONGODB_URI is set -- answers are skipped gracefully when it is not, so the
  * build still works without database access).
  *
@@ -23,11 +23,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// The database URL lives in server/.env, not the root .env (which only holds
+// The database URL lives in backend/.env, not the root .env (which only holds
 // VITE_-prefixed, publicly-inlined values).
 try {
   const dotenv = (await import('dotenv')).default;
-  dotenv.config({ path: join(ROOT, 'server', '.env') });
+  dotenv.config({ path: join(ROOT, 'backend', '.env') });
 } catch {
   // dotenv is optional here; without it we simply prerender without answers.
 }
@@ -84,8 +84,8 @@ function readJson(rel) {
   return existsSync(full) ? JSON.parse(readFileSync(full, 'utf8')) : [];
 }
 
-const techRaw = readJson('server/data/interview_questions_combined.json');
-const hrRaw = readJson('server/data/hr_questions_company_wise.json');
+const techRaw = readJson('data/backend/interview_questions_combined.json');
+const hrRaw = readJson('data/backend/hr_questions_company_wise.json');
 
 // The free-tier sample sizes must match the server's, or prerendered pages
 // would show a different amount of content than the live API returns for the

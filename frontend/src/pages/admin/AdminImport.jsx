@@ -15,9 +15,9 @@ import {
   X,
   BookOpen,
 } from "lucide-react";
-import Navbar from "../components/common/Navbar";
-import Footer from "../components/common/Footer";
-import Button from "../components/common/Button";
+import Navbar from "../../components/common/Navbar";
+import Footer from "../../components/common/Footer";
+import Button from "../../components/common/Button";
 import {
   getAllQuestions,
   addAdminQuestion,
@@ -26,7 +26,7 @@ import {
   importQuestionsBatch,
   exportQuestionBankJSON,
   resetQuestionBankToDefault,
-} from "../services/questionBankService";
+} from "../../services/questionBankService";
 
 const ADMIN_PASSCODE = "cmrit@admin2026";
 const STORAGE_ADMIN_AUTH = "cmrit_admin_authenticated";

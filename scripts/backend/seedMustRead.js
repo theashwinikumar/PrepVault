@@ -1,12 +1,12 @@
 // Seeds the MustReadQuestion collection from the DSA JSON + conceptual Q&A.
-// Run once (and after content changes):  node scripts/seedMustRead.js
+// Run once (and after content changes):  node scripts/backend/seedMustRead.js
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const mongoose = require('mongoose');
-const connectDB = require('../config/db');
-const MustReadQuestion = require('../models/MustReadQuestion');
-const dsaData = require('../data/must_read_questions.json');
-const concepts = require('../data/conceptualQuestions.js');
+const connectDB = require('../../backend/config/db');
+const MustReadQuestion = require('../../backend/models/MustReadQuestion');
+const dsaData = require('../../data/backend/must_read_questions.json');
+const concepts = require('../../data/backend/conceptualQuestions.js');
 
 async function seed() {
   await connectDB();

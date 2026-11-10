@@ -1,12 +1,12 @@
 import { Routes, Route } from "react-router-dom";
-import Home from "./pages/Home.jsx";
-import QuestionBank from "./pages/QuestionBank.jsx";
-import QuestionDetails from "./pages/QuestionDetails.jsx";
-import About from "./pages/About.jsx";
-import Companies from "./pages/Companies.jsx";
-import CompanyPage from "./pages/CompanyPage.jsx";
-import Admin from "./pages/Admin.jsx";
-import NotFound from "./pages/NotFound.jsx";
+import Home from "../pages/Home.jsx";
+import QuestionBank from "../pages/QuestionBank.jsx";
+import QuestionDetails from "../pages/QuestionDetails.jsx";
+import About from "../pages/About.jsx";
+import Companies from "../pages/Companies.jsx";
+import CompanyPage from "../pages/CompanyPage.jsx";
+import Admin from "../pages/admin/AdminImport.jsx";
+import NotFound from "../pages/NotFound.jsx";
 
 /**
  * Clean multi-page application routing table.

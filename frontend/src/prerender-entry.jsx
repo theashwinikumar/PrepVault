@@ -5,7 +5,7 @@
  * built module instead of reaching into the JSX source tree (which Node cannot
  * load directly).
  */
-export { default as AppRoutes } from "./routes.jsx";
+export { default as AppRoutes } from "./routes/AppRoutes.jsx";
 export { seedQuestionData } from "./hooks/useQuestionData.js";
 export { slugify, groupCompanies } from "./utils/slug.js";
 
