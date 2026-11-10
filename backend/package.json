@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node ../scripts/backend/seed.js"
   },
   "dependencies": {
     "cloudinary": "^2.10.0",

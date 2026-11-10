@@ -5,11 +5,11 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', '**/node_modules', 'server/data', 'api']),
+  globalIgnores(['dist', '**/node_modules', 'data', 'api']),
 
   // Browser code: the React app.
   {
-    files: ['src/**/*.{js,jsx}'],
+    files: ['frontend/src/**/*.{js,jsx}'],
     extends: [
       js.configs.recommended,
       reactHooks.configs.flat.recommended,
@@ -25,7 +25,7 @@ export default defineConfig([
   // which flagged every require/module/process as no-undef and buried the real
   // findings under a few hundred false positives.
   {
-    files: ['server/**/*.js'],
+    files: ['backend/**/*.js'],
     extends: [js.configs.recommended],
     languageOptions: {
       globals: { ...globals.node },
@@ -37,7 +37,7 @@ export default defineConfig([
   // The prerender entry is a Node-side module, never loaded by the browser, so
   // Fast Refresh's component-export rule does not apply to it.
   {
-    files: ['src/prerender-entry.jsx'],
+    files: ['frontend/src/prerender-entry.jsx'],
     rules: { 'react-refresh/only-export-components': 'off' },
   },
 

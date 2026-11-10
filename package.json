@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/gen-sitemap.mjs && vite build && npm run prerender:bundle && npm run prerender",
+    "build": "node scripts/gen-sitemap.mjs && vite build --config vite.config.js && npm run prerender:bundle && npm run prerender",
     "lint": "eslint .",
     "preview": "vite preview",
     "sitemap": "node scripts/gen-sitemap.mjs",
-    "verify": "node server/scripts/checkSlugParity.js && npm run lint",
+    "verify": "node scripts/backend/checkSlugParity.js && npm run lint",
     "prerender:bundle": "vite build --config vite.prerender.config.js",
     "prerender": "node scripts/prerender.mjs"
   },
