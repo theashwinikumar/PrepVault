@@ -1,4 +1,6 @@
+
 import { Routes, Route } from "react-router-dom";
+
 import Home from "../pages/Home.jsx";
 import QuestionBank from "../pages/QuestionBank.jsx";
 import QuestionDetails from "../pages/QuestionDetails.jsx";
@@ -8,9 +10,13 @@ import CompanyPage from "../pages/CompanyPage.jsx";
 import Admin from "../pages/admin/AdminImport.jsx";
 import NotFound from "../pages/NotFound.jsx";
 
+// New Placement Experience Form
+import PlacementFeedback from "../pages/PlacementFeedback.jsx";
+
 /**
- * Clean multi-page application routing table.
- * All payment & paywall features removed in favor of 100% free CMRIT placement access.
+ * CMRIT Placement Hub - Application Routes
+ * Public placement preparation and feedback pages.
+ * Existing admin functionality remains unchanged.
  */
 export default function AppRoutes() {
   return (
@@ -31,7 +37,13 @@ export default function AppRoutes() {
       <Route path="/company/:slug" element={<CompanyPage />} />
       <Route path="/company/:slug/:year" element={<CompanyPage />} />
 
-      {/* Admin Portal */}
+      {/* NEW: Public Placement Experience Form */}
+      <Route
+        path="/share-experience"
+        element={<PlacementFeedback />}
+      />
+
+      {/* Admin Portal - Existing Functionality Preserved */}
       <Route path="/admin" element={<Admin />} />
       <Route path="/login" element={<Admin />} />
 
