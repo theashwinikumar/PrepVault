@@ -7,7 +7,6 @@ from pydantic import BaseModel, ConfigDict
 
 class ImportBatchResponse(BaseModel):
     id: UUID
-
     filename: Optional[str] = None
 
     total_records: int
@@ -22,3 +21,13 @@ class ImportBatchResponse(BaseModel):
     completed_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ImportRowError(BaseModel):
+    row: int
+    message: str
+
+
+class ImportResultResponse(BaseModel):
+    batch: ImportBatchResponse
+    errors: list[ImportRowError]
