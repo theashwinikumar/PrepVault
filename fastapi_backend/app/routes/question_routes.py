@@ -454,3 +454,37 @@ def publish_question(
         "message": "Question published successfully",
         "question_id": str(question.id)
     }
+    
+    
+# ==========================================
+# 8. RELATED QUESTIONS
+# ==========================================
+
+@router.get("/{question_id}/related", response_model=list[QuestionResponse])
+def get_related_questions(
+    question_id: UUID,
+    limit: int = Query(5, ge=1, le=20),
+    db: Session = Depends(get_db)
+):
+
+    question = db.query(Question).filter(
+        Question.id == question_id,
+        Question.status == "published"
+    ).first()
+
+    if not question:
+        raise HTTPException(
+            status_code=404,
+            detail="Question not found"
+        )
+
+    related_questions = db.query(Question).filter(
+        Question.topic_id == question.topic_id,
+        Question.subject_id == question.subject_id,
+        Question.status == "published",
+        Question.id != question_id
+    ).order_by(
+        Question.created_at.desc()
+    ).limit(limit).all()
+
+    return related_questions
