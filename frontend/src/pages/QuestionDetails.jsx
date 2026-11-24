@@ -9,113 +9,203 @@ import {
   Share2,
   Printer,
   Sparkles,
-  Building2,
-  Code2,
-  ChevronRight,
-  Flame,
-  Clock,
-  Layers,
-  ArrowRight,
   BookOpen,
+  Layers,
+  AlertCircle,
+  RefreshCw,
+  FileText,
 } from "lucide-react";
 import Navbar from "../components/common/Navbar";
 import Footer from "../components/common/Footer";
 import Button from "../components/common/Button";
-import { getQuestionById, getAllQuestions } from "../services/questionBankService";
+import Loader from "../components/common/Loader";
+import {
+  fetchQuestionById,
+  fetchRelatedQuestions,
+  fetchSubjects,
+  fetchTopics,
+  formatQuestionType,
+  formatDifficulty,
+} from "../services/questionApi";
 import { useBookmarks } from "../hooks/useBookmarks";
 import { useProgress } from "../hooks/useProgress";
-import { COMPANY_DOMAINS } from "../utils/companyDomains";
 import { useGroq } from "../hooks/useGroq";
+
+const DIFFICULTY_PILL_CLASSES = {
+  easy: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  medium: "bg-amber-50 text-amber-700 border-amber-200",
+  hard: "bg-rose-50 text-rose-700 border-rose-200",
+};
 
 export default function QuestionDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const question = useMemo(() => getQuestionById(id), [id]);
+  const [retryTick, setRetryTick] = useState(0);
+  const [detailState, setDetailState] = useState({
+    requestKey: "",
+    question: null,
+    related: [],
+    subjects: [],
+    topics: [],
+    error: "",
+    statusCode: null,
+  });
+
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState("solution"); // "solution" | "code" | "ai"
-  const [codeLanguage, setCodeLanguage] = useState("java");
+  const [activeTab, setActiveTab] = useState("solution"); // "solution" | "ai"
 
   // Groq AI Coach integration
   const { chat } = useGroq();
-  const [aiAnswer, setAiAnswer] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState("");
+  const [aiState, setAiState] = useState({
+    id: "",
+    answer: "",
+    loading: false,
+    error: "",
+  });
 
   const { bookmarks, toggle: toggleBookmark } = useBookmarks();
   const { completed, toggleCompleted } = useProgress();
 
+  const requestKey = `${id || ""}:${retryTick}`;
+
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }, [id]);
 
-  const allQuestions = useMemo(() => getAllQuestions(), []);
+  useEffect(() => {
+    if (!id) return undefined;
 
-  // Related questions from same company
-  const relatedCompanyQuestions = useMemo(() => {
-    if (!question) return [];
-    return allQuestions
-      .filter((q) => q.company === question.company && q.id !== question.id)
-      .slice(0, 5);
-  }, [allQuestions, question]);
+    const controller = new AbortController();
+    const { signal } = controller;
 
-  // Related questions in same topic
-  const relatedTopicQuestions = useMemo(() => {
-    if (!question) return [];
-    return allQuestions
-      .filter((q) => q.topic === question.topic && q.id !== question.id)
-      .slice(0, 5);
-  }, [allQuestions, question]);
+    Promise.all([
+      fetchQuestionById(id, { signal }),
+      fetchRelatedQuestions(id, { limit: 5, signal }).catch(() => []),
+      fetchSubjects({ signal }).catch(() => []),
+      fetchTopics({ signal }).catch(() => []),
+    ])
+      .then(([questionData, relatedData, subjectsData, topicsData]) => {
+        setDetailState({
+          requestKey,
+          question: questionData,
+          related: Array.isArray(relatedData) ? relatedData : [],
+          subjects: Array.isArray(subjectsData) ? subjectsData : [],
+          topics: Array.isArray(topicsData) ? topicsData : [],
+          error: "",
+          statusCode: 200,
+        });
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+        setDetailState({
+          requestKey,
+          question: null,
+          related: [],
+          subjects: [],
+          topics: [],
+          error: err.message || "Failed to load question details.",
+          statusCode: err.status || null,
+        });
+      });
 
-  // Next and Previous Questions in catalogue
-  const { prevQ, nextQ } = useMemo(() => {
-    if (!question) return { prevQ: null, nextQ: null };
-    const idx = allQuestions.findIndex((q) => q.id === question.id);
-    return {
-      prevQ: idx > 0 ? allQuestions[idx - 1] : null,
-      nextQ: idx >= 0 && idx < allQuestions.length - 1 ? allQuestions[idx + 1] : null,
-    };
-  }, [allQuestions, question]);
+    return () => controller.abort();
+  }, [id, requestKey]);
 
-  if (!question) {
+  const subjectMap = useMemo(
+    () => Object.fromEntries(detailState.subjects.map((s) => [s.id, s])),
+    [detailState.subjects]
+  );
+
+  const topicMap = useMemo(
+    () => Object.fromEntries(detailState.topics.map((t) => [t.id, t])),
+    [detailState.topics]
+  );
+
+  const loading = detailState.requestKey !== requestKey;
+  const question = detailState.requestKey === requestKey ? detailState.question : null;
+  const apiError = detailState.requestKey === requestKey ? detailState.error : "";
+  const statusCode = detailState.requestKey === requestKey ? detailState.statusCode : null;
+
+  const aiAnswer = aiState.id === id ? aiState.answer : "";
+  const aiLoading = aiState.id === id ? aiState.loading : false;
+  const aiError = aiState.id === id ? aiState.error : "";
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans flex flex-col">
         <Navbar />
-        <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-16 text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
-            <Building2 className="w-8 h-8" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900">Question Not Found</h2>
-          <p className="text-sm text-slate-500">
-            The question you requested could not be located in the CMRIT Placement Question Bank.
-          </p>
-          <Button variant="primary" onClick={() => navigate("/questions")}>
-            Back to Question Bank
-          </Button>
+        <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-12">
+          <Loader text="Loading question details..." fullPage />
         </main>
         <Footer />
       </div>
     );
   }
 
+  if (apiError || !question) {
+    const isNotFound = statusCode === 404 || statusCode === 422;
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans flex flex-col">
+        <Navbar />
+        <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-16 text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">
+            {isNotFound ? "Question Not Found" : "Could Not Load Question"}
+          </h2>
+          <p className="text-sm text-slate-500 max-w-md mx-auto">
+            {isNotFound
+              ? "The requested question was not found or is not published in the Question Bank."
+              : apiError || "An unexpected error occurred while fetching this question."}
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            {!isNotFound && (
+              <Button
+                variant="outline"
+                onClick={() => setRetryTick((t) => t + 1)}
+                leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+              >
+                Retry
+              </Button>
+            )}
+            <Button variant="primary" onClick={() => navigate("/questions")}>
+              Back to Question Bank
+            </Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const subjectName = subjectMap[question.subject_id]?.name || "Core Subject";
+  const topicName = topicMap[question.topic_id]?.name || "General Topic";
+  const typeLabel = formatQuestionType(question.question_type);
+  const difficultyKey = String(question.difficulty || "medium").toLowerCase();
+  const difficultyLabel = formatDifficulty(question.difficulty);
   const isBookmarked = bookmarks.has(question.id);
   const isSolved = completed.has(question.id);
-  const domain = COMPANY_DOMAINS[question.company] || COMPANY_DOMAINS[question.company.trim()];
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(question.question);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(question.question_text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleShare = () => {
-    if (navigator.share) {
+    if (typeof navigator !== "undefined" && navigator.share) {
       navigator.share({
-        title: question.question,
-        text: `Check out this interview question asked at ${question.company} on CMRIT Placement Portal:`,
+        title: question.question_text,
+        text: `Check out this ${subjectName} question on CMRIT Placement Hub:`,
         url: window.location.href,
       });
-    } else {
+    } else if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(window.location.href);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -128,9 +218,7 @@ export default function QuestionDetails() {
       return;
     }
     setActiveTab("ai");
-    setAiLoading(true);
-    setAiError("");
-    setAiAnswer("");
+    setAiState({ id, answer: "", loading: true, error: "" });
 
     try {
       await chat(
@@ -138,63 +226,57 @@ export default function QuestionDetails() {
           {
             role: "system",
             content:
-              "You are an expert technical interview coach at CMRIT Bengaluru. Give structured, student-friendly interview answers. Include key definitions, optimal approach, sample code/pseudocode, time/space complexity, and common follow-up questions.",
+              "You are an expert technical interview coach at CMRIT Bengaluru. Give structured, student-friendly interview answers. Include key definitions, optimal approach, sample code/pseudocode if applicable, and common follow-up questions.",
           },
           {
             role: "user",
-            content: `Interview question for campus placements (${question.type} Round at ${question.company}):\n\n"${question.question}"\n\nPlease provide a complete interview-ready answer.`,
+            content: `Placement question (${typeLabel}, ${subjectName} - ${topicName}):\n\n"${question.question_text}"\n\nPlease provide a complete interview-ready answer.`,
           },
         ],
         (_, full) => {
-          setAiAnswer(full);
+          setAiState({ id, answer: full, loading: true, error: "" });
         }
       );
+      setAiState((prev) => (prev.id === id ? { ...prev, loading: false } : prev));
     } catch (err) {
-      setAiError(err.message || "Could not generate AI answer. Please verify your Groq API key.");
-    } finally {
-      setAiLoading(false);
+      setAiState({
+        id,
+        answer: "",
+        loading: false,
+        error: err.message || "Could not generate AI answer. Please verify your Groq API key.",
+      });
     }
   };
-
-  // Generate clean default code snippet if none exists
-  const displayCode =
-    question.code ||
-    (question.type === "Programming"
-      ? `// Solution for: ${question.question}
-// Language: Java
-public class Solution {
-    public static void solve() {
-        // Implementation approach
-        System.out.println("Optimal approach implemented here");
-    }
-
-    public static void main(String[] args) {
-        solve();
-    }
-}`
-      : `// Core logic / pseudocode:
-// 1. Initialize variables & data structures
-// 2. Traverse input collection
-// 3. Apply algorithm logic
-// 4. Return result`);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-800 font-sans flex flex-col">
       <Navbar />
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+      <main
+        id="main-content"
+        className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 space-y-6"
+      >
         {/* Navigation Breadcrumb Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-            <Link to="/" className="hover:text-sky-600">Home</Link>
-            <span>/</span>
-            <Link to="/questions" className="hover:text-sky-600">Question Bank</Link>
-            <span>/</span>
-            <Link to={`/company/${encodeURIComponent(question.company)}`} className="hover:text-sky-600 font-medium">
-              {question.company}
+          <div className="flex items-center gap-2 text-xs font-medium text-slate-500 flex-wrap">
+            <Link to="/" className="hover:text-sky-600">
+              Home
             </Link>
             <span>/</span>
-            <span className="text-slate-800 font-bold truncate max-w-[200px]">{question.type}</span>
+            <Link to="/questions" className="hover:text-sky-600">
+              Question Bank
+            </Link>
+            <span>/</span>
+            <Link
+              to={`/questions?subject_id=${question.subject_id}`}
+              className="hover:text-sky-600 font-medium"
+            >
+              {subjectName}
+            </Link>
+            <span>/</span>
+            <span className="text-slate-800 font-bold truncate max-w-[200px]">
+              {typeLabel}
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -221,41 +303,23 @@ public class Solution {
         {/* Question Header Card */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            {/* Company Badge with Domain Logo */}
+            {/* Subject & Topic Badge */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center p-1.5 flex-shrink-0">
-                {domain ? (
-                  <img
-                    src={`https://logos.hunter.io/${domain}`}
-                    alt={question.company}
-                    className="max-h-full max-w-full object-contain"
-                    onError={(e) => {
-                      e.target.style.display = "none";
-                      e.target.nextSibling.style.display = "block";
-                    }}
-                  />
-                ) : null}
-                <span
-                  style={{ display: domain ? "none" : "block" }}
-                  className="text-xs font-bold text-slate-500"
-                >
-                  {question.company.charAt(0)}
-                </span>
+              <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center flex-shrink-0 text-sky-700">
+                <Layers className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="font-bold text-slate-900 text-sm sm:text-base">
-                  {question.company}
+                  {subjectName}
                 </h3>
-                <p className="text-xs text-slate-400">
-                  {question.year ? `${question.year} Placement Season` : "Campus Recruitment Drive"}
-                </p>
+                <p className="text-xs text-slate-400">{topicName}</p>
               </div>
             </div>
 
-            {/* Badges & Actions */}
+            {/* Action Buttons */}
             <div className="flex items-center gap-2">
-              {/* Solved Toggle */}
               <button
+                type="button"
                 onClick={() => toggleCompleted(question.id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                   isSolved
@@ -263,12 +327,14 @@ public class Solution {
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200"
                 }`}
               >
-                <CheckCircle2 className={`w-4 h-4 ${isSolved ? "text-emerald-600" : "text-slate-400"}`} />
+                <CheckCircle2
+                  className={`w-4 h-4 ${isSolved ? "text-emerald-600" : "text-slate-400"}`}
+                />
                 <span>{isSolved ? "Practiced" : "Mark Practiced"}</span>
               </button>
 
-              {/* Bookmark Toggle */}
               <button
+                type="button"
                 onClick={() => toggleBookmark(question.id)}
                 aria-label="Bookmark question"
                 className={`p-2 rounded-xl border transition-colors ${
@@ -280,8 +346,8 @@ public class Solution {
                 <Bookmark className={`w-4 h-4 ${isBookmarked ? "fill-current" : ""}`} />
               </button>
 
-              {/* Share */}
               <button
+                type="button"
                 onClick={handleShare}
                 aria-label="Share question"
                 className="p-2 rounded-xl border border-slate-200 bg-white text-slate-400 hover:text-slate-700 transition-colors"
@@ -293,54 +359,37 @@ public class Solution {
 
           {/* Main Question Text */}
           <div className="space-y-3">
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug">
-              {question.question}
+            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug whitespace-pre-line">
+              {question.question_text}
             </h1>
 
             {/* Metadata Pills */}
             <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
               <span className="bg-sky-50 text-sky-700 font-semibold px-2.5 py-1 rounded-lg border border-sky-200/60">
-                {question.type} Round
+                {typeLabel}
               </span>
               <span
                 className={`font-semibold px-2.5 py-1 rounded-lg border ${
-                  question.difficulty === "Easy"
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : question.difficulty === "Medium"
-                    ? "bg-amber-50 text-amber-700 border-amber-200"
-                    : "bg-rose-50 text-rose-700 border-rose-200"
+                  DIFFICULTY_PILL_CLASSES[difficultyKey] ||
+                  DIFFICULTY_PILL_CLASSES.medium
                 }`}
               >
-                {question.difficulty}
+                {difficultyLabel}
               </span>
               <span className="bg-purple-50 text-purple-700 font-semibold px-2.5 py-1 rounded-lg border border-purple-200">
-                {question.topic}
+                {topicName}
               </span>
-              {question.isMustRead && (
-                <span className="bg-amber-100 text-amber-800 font-bold px-2.5 py-1 rounded-lg border border-amber-300 flex items-center gap-1">
-                  <Flame className="w-3.5 h-3.5 text-amber-600" /> Must-Read DSA Benchmark
-                </span>
-              )}
             </div>
           </div>
-
-          {/* Optional Problem Statement Detail / Constraints */}
-          {question.problemStatement && (
-            <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200 text-xs sm:text-sm text-slate-700 space-y-2 leading-relaxed">
-              <span className="font-bold text-slate-900 block text-xs uppercase tracking-wider">
-                Problem Description & Constraints:
-              </span>
-              <p className="whitespace-pre-line">{question.problemStatement}</p>
-            </div>
-          )}
         </div>
 
-        {/* Solution Tabs Section */}
+        {/* Answer, Explanation & Sidebar */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           <div className="lg:col-span-2 space-y-4">
             {/* Tab Switcher */}
             <div className="bg-white rounded-2xl p-1.5 border border-slate-200/80 shadow-xs flex items-center gap-1">
               <button
+                type="button"
                 onClick={() => setActiveTab("solution")}
                 className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
                   activeTab === "solution"
@@ -348,21 +397,11 @@ public class Solution {
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
-                Concept & Solution
+                Answer & Explanation
               </button>
 
               <button
-                onClick={() => setActiveTab("code")}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
-                  activeTab === "code"
-                    ? "bg-blue-50 text-blue-700 shadow-xs border border-blue-200"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                Code & Complexity
-              </button>
-
-              <button
+                type="button"
                 onClick={handleFetchAi}
                 className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
                   activeTab === "ai"
@@ -375,145 +414,64 @@ public class Solution {
               </button>
             </div>
 
-            {/* Tab 1: Solution Content */}
+            {/* Tab 1: Answer & Explanation */}
             {activeTab === "solution" && (
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-6">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-sky-600" /> Recommended Interview Approach
-                  </h3>
+                  <h2 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-sky-600" /> Official Answer &
+                    Explanation
+                  </h2>
                   <button
+                    type="button"
                     onClick={handleCopy}
                     className="text-xs font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1"
                   >
-                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copied ? "Copied" : "Copy"}</span>
+                    {copied ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                    <span>{copied ? "Copied" : "Copy Question"}</span>
                   </button>
                 </div>
 
-                {question.answer ? (
-                  <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-line space-y-3">
-                    {question.answer}
-                  </div>
-                ) : (
-                  <div className="space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
-                    <p>
-                      This question is a high-frequency benchmark asked in the{" "}
-                      <span className="font-semibold text-slate-900">{question.type} round</span> for candidates at{" "}
-                      <span className="font-semibold text-slate-900">{question.company}</span>.
-                    </p>
-
-                    <div className="bg-sky-50/70 p-4 rounded-2xl border border-sky-100 space-y-2">
-                      <h4 className="font-bold text-sky-950 text-xs uppercase tracking-wider">
-                        How to structure your answer:
-                      </h4>
-                      <ol className="list-decimal pl-5 space-y-1.5 text-xs text-sky-900">
-                        <li>
-                          <strong>Direct definition:</strong> State what it is in one concise sentence.
-                        </li>
-                        <li>
-                          <strong>Core concept & principles:</strong> Break down the internal mechanism or algorithm.
-                        </li>
-                        <li>
-                          <strong>Real-world engineering example:</strong> Connect it to real database tables, operating system kernels, or microservices.
-                        </li>
-                        <li>
-                          <strong>Trade-offs & alternatives:</strong> Discuss time vs. space complexity, lock contention, or caching overhead.
-                        </li>
-                      </ol>
-                    </div>
-
-                    <p className="text-slate-500 text-xs">
-                      Want an instant full answer? Click on the <strong>AI Coach</strong> tab above to generate an in-depth breakdown with examples!
-                    </p>
-                  </div>
-                )}
-
-                {/* Test case if present */}
-                {question.testCase && (
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs space-y-2">
-                    <span className="font-bold text-slate-800 uppercase tracking-wider block">
-                      Sample Test Case:
-                    </span>
-                    <div className="font-mono bg-white p-2.5 rounded-xl border border-slate-200/70">
-                      <div>Input: {question.testCase.input}</div>
-                      <div>Output: {question.testCase.output}</div>
-                    </div>
-                    {question.testCase.explanation && (
-                      <p className="text-slate-600">{question.testCase.explanation}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Tab 2: Code & Complexity */}
-            {activeTab === "code" && (
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-6">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
-                    <Code2 className="w-4 h-4 text-blue-600" /> Reference Implementation
+                {/* Answer Block */}
+                <div className="bg-sky-50/60 p-5 rounded-2xl border border-sky-100 space-y-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-sky-900">
+                    Answer
                   </h3>
-                  <div className="flex items-center gap-2">
-                    {["java", "python", "cpp"].map((lang) => (
-                      <button
-                        key={lang}
-                        onClick={() => setCodeLanguage(lang)}
-                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg uppercase ${
-                          codeLanguage === lang
-                            ? "bg-slate-900 text-white"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        }`}
-                      >
-                        {lang}
-                      </button>
-                    ))}
-                  </div>
+                  {question.answer?.trim() ? (
+                    <div className="text-sm text-slate-800 leading-relaxed whitespace-pre-line">
+                      {question.answer}
+                    </div>
+                  ) : (
+                    <p className="text-xs sm:text-sm text-slate-500">
+                      No answer has been added for this question yet. You can try the{" "}
+                      <strong>AI Coach</strong> tab for an instant structured solution.
+                    </p>
+                  )}
                 </div>
 
-                {/* Code Block */}
-                <div className="relative rounded-2xl overflow-hidden bg-slate-950 text-slate-100 font-mono text-xs sm:text-sm p-4 sm:p-5 border border-slate-800">
-                  <pre className="overflow-x-auto leading-relaxed">
-                    <code>{displayCode}</code>
-                  </pre>
-                </div>
-
-                {/* Complexity Analysis Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0">
-                      <Clock className="w-4 h-4" />
+                {/* Explanation Block */}
+                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-slate-500" /> Explanation
+                  </h3>
+                  {question.explanation?.trim() ? (
+                    <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+                      {question.explanation}
                     </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
-                        Time Complexity
-                      </h4>
-                      <p className="text-sm font-semibold text-blue-600 mt-0.5">
-                        {question.timeComplexity || "O(N) - Linear Time"}
-                      </p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Single pass traversal</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
-                      <Layers className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
-                        Space Complexity
-                      </h4>
-                      <p className="text-sm font-semibold text-emerald-600 mt-0.5">
-                        {question.spaceComplexity || "O(1) - Constant Space"}
-                      </p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">No auxiliary data structures</p>
-                    </div>
-                  </div>
+                  ) : (
+                    <p className="text-xs sm:text-sm text-slate-500">
+                      No detailed explanation is available for this question yet.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Tab 3: AI Placement Coach */}
+            {/* Tab 2: AI Placement Coach */}
             {activeTab === "ai" && (
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-6">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -558,115 +516,68 @@ public class Solution {
                 )}
               </div>
             )}
-
-            {/* Previous & Next Navigation Bar */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-200">
-              {prevQ ? (
-                <Link
-                  to={`/question/${prevQ.id}`}
-                  className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-sky-600 transition-colors"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span className="truncate max-w-[150px] sm:max-w-xs">{prevQ.question}</span>
-                </Link>
-              ) : (
-                <div />
-              )}
-
-              {nextQ ? (
-                <Link
-                  to={`/question/${nextQ.id}`}
-                  className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-sky-600 transition-colors ml-auto"
-                >
-                  <span className="truncate max-w-[150px] sm:max-w-xs">{nextQ.question}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              ) : (
-                <div />
-              )}
-            </div>
           </div>
 
-          {/* Right Sidebar: Company & Topic Insights */}
+          {/* Right Sidebar: Topic Profile & Related Questions */}
           <div className="space-y-6">
-            {/* Company Info Box */}
             <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-4">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-                Company Drive Profile
+                Question Metadata
               </span>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center p-1.5 flex-shrink-0">
-                  {domain ? (
-                    <img
-                      src={`https://logos.hunter.io/${domain}`}
-                      alt={question.company}
-                      className="max-h-full max-w-full object-contain"
-                    />
-                  ) : (
-                    <Building2 className="w-5 h-5 text-slate-400" />
-                  )}
+              <div className="space-y-2 text-xs text-slate-600">
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-400">Subject</span>
+                  <span className="font-semibold text-slate-900 text-right">
+                    {subjectName}
+                  </span>
                 </div>
-                <div>
-                  <h4 className="font-bold text-slate-900 text-sm">{question.company}</h4>
-                  <Link
-                    to={`/company/${encodeURIComponent(question.company)}`}
-                    className="text-xs text-sky-600 font-semibold hover:underline flex items-center gap-1"
-                  >
-                    View all questions <ChevronRight className="w-3 h-3" />
-                  </Link>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-400">Topic</span>
+                  <span className="font-semibold text-slate-900 text-right">
+                    {topicName}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-400">Type</span>
+                  <span className="font-semibold text-slate-900 text-right">
+                    {typeLabel}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-400">Difficulty</span>
+                  <span className="font-semibold text-slate-900 text-right">
+                    {difficultyLabel}
+                  </span>
                 </div>
               </div>
-
-              <div className="pt-3 border-t border-slate-100 text-xs text-slate-500 space-y-2">
-                <p>
-                  CMRIT campus recruitment frequently features 3 primary rounds: Online Technical Assessment, Technical Interview, and HR / Cultural Fit.
-                </p>
+              <div className="pt-3 border-t border-slate-100">
+                <Link
+                  to={`/questions?subject_id=${question.subject_id}&topic_id=${question.topic_id}`}
+                  className="text-xs text-sky-600 font-semibold hover:underline"
+                >
+                  Browse more in {topicName} →
+                </Link>
               </div>
             </div>
 
-            {/* Related Questions from Same Company */}
-            {relatedCompanyQuestions.length > 0 && (
+            {detailState.related.length > 0 && (
               <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-3">
                 <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
-                  More from {question.company}
+                  Related Questions
                 </h4>
                 <div className="space-y-2">
-                  {relatedCompanyQuestions.map((rq) => (
+                  {detailState.related.map((rq) => (
                     <Link
                       key={rq.id}
                       to={`/question/${rq.id}`}
                       className="block p-2.5 rounded-xl bg-slate-50 hover:bg-sky-50 border border-slate-200/60 hover:border-sky-200 transition-colors"
                     >
                       <p className="text-xs font-medium text-slate-800 line-clamp-2">
-                        {rq.question}
+                        {rq.question_text}
                       </p>
                       <span className="text-[10px] text-slate-400 mt-1 block">
-                        {rq.type} · {rq.difficulty}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Related Questions in Same Topic */}
-            {relatedTopicQuestions.length > 0 && (
-              <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-3">
-                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
-                  Related in {question.topic}
-                </h4>
-                <div className="space-y-2">
-                  {relatedTopicQuestions.map((rq) => (
-                    <Link
-                      key={rq.id}
-                      to={`/question/${rq.id}`}
-                      className="block p-2.5 rounded-xl bg-slate-50 hover:bg-sky-50 border border-slate-200/60 hover:border-sky-200 transition-colors"
-                    >
-                      <p className="text-xs font-medium text-slate-800 line-clamp-2">
-                        {rq.question}
-                      </p>
-                      <span className="text-[10px] text-slate-400 mt-1 block">
-                        {rq.company} · {rq.difficulty}
+                        {formatQuestionType(rq.question_type)} ·{" "}
+                        {formatDifficulty(rq.difficulty)}
                       </span>
                     </Link>
                   ))}
