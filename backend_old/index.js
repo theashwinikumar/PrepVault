@@ -12,6 +12,7 @@ const mustReadRoutes = require('./routes/mustReadRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const answerRoutes = require('./routes/answerRoutes');
+const placementFeedbackRoutes = require('./routes/placementFeedbackRoutes');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const { sanitizeQuery } = require('./middleware/sanitizeQuery');
 
@@ -65,8 +66,11 @@ app.get('/', (req, res) => {
 });
 
 // API Routes
+
+// API Routes
 app.use('/api', apiLimiter);
 app.use('/api', sanitizeQuery);
+
 app.use('/api/auth', authRoutes);
 app.use('/api/notes', notesRoutes);
 app.use('/api/subscription', subscriptionRoutes);
@@ -76,6 +80,10 @@ app.use('/api/mustread', mustReadRoutes);
 app.use('/api/technical', technicalRoutes);
 app.use('/api/hr', hrRoutes);
 app.use('/api/stats', statsRoutes);
+
+// Placement Feedback Form API
+app.use('/api/feedback', placementFeedbackRoutes);
+  
 
 // 404 handler
 app.use((req, res) => {
