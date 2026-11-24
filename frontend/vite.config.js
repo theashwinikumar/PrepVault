@@ -6,8 +6,15 @@ const frontendRoot = fileURLToPath(new URL('.', import.meta.url))
 
 export default defineConfig({
   root: frontendRoot,
+
   publicDir: fileURLToPath(new URL('./public', import.meta.url)),
+
   plugins: [react()],
+
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
+
   build: {
     outDir: fileURLToPath(new URL('../dist', import.meta.url)),
     emptyOutDir: true,

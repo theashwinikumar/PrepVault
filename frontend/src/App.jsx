@@ -247,12 +247,6 @@ export default function App() {
   const [showMustRead, setShowMustRead] = useState(false);
   const [showPlacementFeedback, setShowPlacementFeedback] = useState(false);
 
-  // NEW: Placement Feedback Form
-  const [
-    showPlacementFeedback,
-    setShowPlacementFeedback,
-  ] = useState(false);
-
   const { bookmarks, toggle } = useBookmarks();
   const { completed, toggleCompleted } = useProgress();
 

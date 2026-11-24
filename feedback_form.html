@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Placement Feedback Form</title>
+    <style>
+        body {font-family: Arial, sans-serif; background:#f4f7f9; margin:0; padding:0;}
+        .container {max-width: 700px; margin:40px auto; background:#fff; padding:30px; border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,0.1);}
+        h1 {text-align:center; margin-bottom:20px;}
+        .field {margin-bottom:15px;}
+        label {display:block; margin-bottom:5px; font-weight:600;}
+        input[type=text], input[type=email], textarea, select {
+            width:100%; padding:10px; border:1px solid #ccd0d5; border-radius:4px; font-size:14px;
+        }
+        textarea {resize:vertical; min-height:80px;}
+        .btn-group {display:flex; justify-content:flex-end; gap:10px; margin-top:20px;}
+        .btn {display:inline-flex; align-items:center; gap:6px; background:#0069d9; color:#fff; border:none; padding:10px 16px; border-radius:4px; cursor:pointer; font-size:14px;}
+        .btn:hover {background:#0053ba;}
+        .reset {background:#dc3545;}
+        .reset:hover {background:#b02a37;}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Placement Feedback Form</h1>
+    <form id="feedbackForm">
+        <div class="field">
+            <label for="name">Name *</label>
+            <input type="text" id="name" name="name" required />
+        </div>
+        <div class="field">
+            <label for="email">Email *</label>
+            <input type="email" id="email" name="email" required />
+        </div>
+        <div class="field">
+            <label for="branch">Branch *</label>
+            <select id="branch" name="branch" required>
+                <option value="">Select...</option>
+                <option>BE-CSE</option>
+                <option>BE-ECE</option>
+                <option>BE-ISE</option>
+                <option>MBA</option>
+                <option>MCA</option>
+                <option>AInDS & CS-DS</option>
+                <option>AIML & CS-ML</option>
+            </select>
+        </div>
+        <div class="field">
+            <label for="company">Company / Drive *</label>
+            <input type="text" id="company" name="company" required />
+        </div>
+        <div class="field">
+            <label for="ctc">CTC offered *</label>
+            <input type="text" id="ctc" name="ctc" required />
+        </div>
+        <div class="field">
+            <label for="rating">Overall Experience (1–5) *</label>
+            <select id="rating" name="rating" required>
+                <option value="">Select rating</option>
+                <option>1</option>
+                <option>2</option>
+                <option>3</option>
+                <option>4</option>
+                <option>5</option>
+            </select>
+        </div>
+        <div class="field">
+            <label for="comments">Additional Comments / Feedback *</label>
+            <textarea id="comments" name="comments" placeholder="Your thoughts..." required></textarea>
+        </div>
+        <div class="field">
+            <label for="attachment">Upload supporting file (optional, max 10 MB)</label>
+            <input type="file" id="attachment" name="attachment" accept=".pdf,.doc,.docx" />
+        </div>
+        <div class="btn-group">
+            <button type="reset" class="btn reset">
+                <!-- reset icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 5V1L8 5l4 4V6c3.31 0 6 2.69 6 6a6 6 0 1 1-12 0H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                Reset
+            </button>
+            <button type="submit" class="btn">
+                <!-- submit (paper‑plane) icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M2.01 21l20.99-9-20.99-9 .01 7 15 2-15 2z"/></svg>
+                Submit
+            </button>
+        </div>
+    </form>
+</div>
+<script>
+    // Placeholder submit – replace with real backend later
+    document.getElementById('feedbackForm').addEventListener('submit', function(e){
+        e.preventDefault();
+        alert('Thank you! Your feedback has been captured (backend integration pending).');
+    });
+</script>
+</body>
+</html>

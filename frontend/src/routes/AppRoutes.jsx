@@ -1,5 +1,12 @@
+import QuestionForm from "../pages/admin/QuestionForm.jsx";
+import BulkImport from "../pages/admin/BulkImport.jsx";
+import ImportHistory from "../pages/admin/ImportHistory.jsx";
 
+import QuestionManagement from "../pages/admin/QuestionManagement.jsx";
+import AdminLayout from "../components/admin/AdminLayout.jsx";
+import AdminDashboard from "../pages/admin/AdminDashboard.jsx";
 import { Routes, Route } from "react-router-dom";
+import AdminSidebar from "../components/admin/AdminSidebar.jsx";
 
 import Home from "../pages/Home.jsx";
 import QuestionBank from "../pages/QuestionBank.jsx";
@@ -45,7 +52,68 @@ export default function AppRoutes() {
 
       {/* Admin Portal - Existing Functionality Preserved */}
       <Route path="/admin" element={<Admin />} />
+     <Route element={<AdminLayout />}>
+
+  <Route
+    path="/admin/preview"
+    element={<AdminDashboard />}
+  />
+
+  <Route
+    path="/admin/dashboard"
+    element={<AdminDashboard />}
+  />
+
+  <Route
+    path="/admin/questions"
+    element={<QuestionManagement />}
+  />
+
+  <Route
+  path="/admin/import"
+  element={<BulkImport />}
+/>
+
+<Route
+  path="/admin/import/history"
+  element={<ImportHistory />}
+/>
+
+
+  <Route
+  path="/admin/questions/create"
+  element={<QuestionForm key="create" />}
+/>
+
+<Route
+  path="/admin/questions/:id/edit"
+  element={<QuestionForm key="edit" />}
+/>
+
+  <Route
+    path="/admin/questions/published"
+    element={
+      <QuestionManagement initialStatus="Published" />
+    }
+  />
+
+  <Route
+    path="/admin/questions/drafts"
+    element={
+      <QuestionManagement initialStatus="Draft" />
+    }
+  />
+
+  <Route
+    path="/admin/questions/disabled"
+    element={
+      <QuestionManagement initialStatus="Disabled" />
+    }
+  />
+
+</Route>
       <Route path="/login" element={<Admin />} />
+
 
       {/* 404 Catch-All */}
       <Route path="*" element={<NotFound />} />
