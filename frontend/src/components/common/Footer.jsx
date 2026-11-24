@@ -1,5 +1,7 @@
 
 import { Link } from "react-router-dom";
+import { ShieldCheck } from "lucide-react";
+
 import {
   GraduationCap,
   MapPin,
@@ -163,11 +165,19 @@ export default function Footer() {
             <span>·</span>
 
             <Link
-              to="/questions"
-              className="hover:text-slate-400 transition-colors"
-            >
-              Question Archive
-            </Link>
+  to="/questions"
+  className="hover:text-slate-400 transition-colors"
+>
+  Question Archive
+</Link>
+
+<Link
+  to="/admin/dashboard"
+  className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-sm font-medium transition-colors"
+>
+  <ShieldCheck size={16} />
+  Admin Portal
+</Link>
 
             <span>·</span>
 
