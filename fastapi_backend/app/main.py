@@ -5,7 +5,8 @@ from app.routes import (
     topic_routes,
     company_routes,
     question_routes,
-    import_routes
+    import_routes,
+    statistics_routes
 )
 
 
@@ -48,3 +49,4 @@ app.include_router(topic_routes.router)
 app.include_router(company_routes.router)
 app.include_router(question_routes.router)
 app.include_router(import_routes.router)
+app.include_router(statistics_routes.router)

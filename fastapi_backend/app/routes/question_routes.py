@@ -11,6 +11,8 @@ from app.models.question import Question
 from app.models.subject import Subject
 from app.models.topic import Topic
 
+from app.models.question_company import QuestionCompany
+
 from app.schemas.question import (
     QuestionCreate,
     QuestionUpdate,
@@ -39,6 +41,7 @@ def get_questions(
     topic_id: UUID | None = None,
     difficulty: str | None = None,
     question_type: str | None = None,
+    company_id: UUID | None = None,
     search: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -68,6 +71,14 @@ def get_questions(
         query = query.filter(
             Question.question_type == question_type.lower()
         )
+        
+    if company_id:
+        query = query.join(
+        QuestionCompany,
+        Question.id == QuestionCompany.question_id
+    ).filter(
+        QuestionCompany.company_id == company_id
+    )
 
     if search:
         query = query.filter(
@@ -92,6 +103,7 @@ def get_all_questions(
     topic_id: UUID | None = None,
     difficulty: str | None = None,
     question_type: str | None = None,
+    company_id: UUID | None = None,
     status: str | None = None,
     search: str | None = None,
     skip: int = Query(0, ge=0),
