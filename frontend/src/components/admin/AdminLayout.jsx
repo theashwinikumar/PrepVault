@@ -112,11 +112,11 @@ export default function AdminLayout({ onLogout }) {
 
               <div className="flex items-center gap-4">
 
-                <div className="hidden md:flex items-center gap-2 bg-amber-50 text-amber-700 border border-amber-200 px-3 py-2 rounded-lg text-xs font-medium">
+                <div className="hidden md:flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-2 rounded-lg text-xs font-medium">
 
                   <ShieldCheck size={15} />
 
-                  Demo Mode
+                  Live API
 
                 </div>
 

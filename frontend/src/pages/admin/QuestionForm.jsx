@@ -1,25 +1,56 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAdminQuestions } from "../../context/AdminQuestionContext";
+import {
+  findAdminQuestionById,
+  createAdminQuestion,
+  updateAdminQuestion,
+  fetchTopics,
+} from "../../services/adminApi";
 
 const inputClass =
   "w-full border border-slate-300 rounded-lg px-4 py-3 " +
   "text-sm bg-white text-slate-900 outline-none " +
   "focus:ring-2 focus:ring-blue-400";
 
-const labelClass =
-  "block text-sm font-semibold text-slate-700 mb-2";
+const labelClass = "block text-sm font-semibold text-slate-700 mb-2";
+
+const EMPTY_FORM = {
+  question_text: "",
+  subject_id: "",
+  topic_id: "",
+  difficulty: "medium",
+  question_type: "theory",
+  status: "draft",
+  answer: "",
+  explanation: "",
+};
+
+function mapQuestionToForm(q) {
+  if (!q) return EMPTY_FORM;
+  return {
+    question_text: q.question_text || "",
+    subject_id: q.subject_id ? String(q.subject_id) : "",
+    topic_id: q.topic_id ? String(q.topic_id) : "",
+    difficulty: q.difficulty ? String(q.difficulty).toLowerCase() : "medium",
+    question_type: q.question_type ? String(q.question_type).toLowerCase() : "theory",
+    status: q.status ? String(q.status).toLowerCase() : "draft",
+    answer: q.answer || "",
+    explanation: q.explanation || "",
+  };
+}
 
 export default function QuestionForm() {
   const { id } = useParams();
-
   return <QuestionFormContent key={id || "create"} id={id} />;
 }
 
 function QuestionFormContent({ id }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const isEdit = Boolean(id);
+  const preloadedQuestion = location.state?.question || null;
 
   const {
     subjects,
@@ -27,171 +58,160 @@ function QuestionFormContent({ id }) {
     difficulties,
     statuses,
     getTopicsBySubject,
-    getSubjectName,
-    getTopicName,
-    getQuestion,
-    createQuestion,
-    updateQuestion,
-    checkDuplicate,
+    refreshMetadata,
   } = useAdminQuestions();
 
-  const existingQuestion = isEdit
-    ? getQuestion(id)
-    : null;
-
-  const [form, setForm] = useState(() => ({
-    question: "",
-    subject_id: "",
-    topic_id: "",
-    difficulty: "Medium",
-    question_type: "descriptive",
-    status: "Draft",
-    answer: "",
-    explanation: "",
-    tags: "",
-    ...(existingQuestion || {}),
-  }));
-
-  const [duplicates, setDuplicates] = useState([]);
-  const [message, setMessage] = useState("");
+  const [form, setForm] = useState(() =>
+    isEdit && preloadedQuestion ? mapQuestionToForm(preloadedQuestion) : EMPTY_FORM
+  );
+  const [loadedKey, setLoadedKey] = useState(() =>
+    !isEdit || preloadedQuestion ? id || "create" : ""
+  );
+  const [loadError, setLoadError] = useState("");
+  const [subjectTopics, setSubjectTopics] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // Topics belonging to the selected subject
+  // Load question by ID when editing directly without router state
+  useEffect(() => {
+    if (!isEdit || preloadedQuestion) return undefined;
 
-  const availableTopics = getTopicsBySubject(
-    form.subject_id
-  );
+    const controller = new AbortController();
+    findAdminQuestionById(id, { signal: controller.signal })
+      .then((question) => {
+        setForm(mapQuestionToForm(question));
+        setLoadError("");
+        setLoadedKey(id);
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+        setLoadError(err.message || "Question not found.");
+        setLoadedKey(id);
+      });
 
-  // Handle form changes
+    return () => controller.abort();
+  }, [id, isEdit, preloadedQuestion]);
+
+  // Fetch topics belonging to selected subject from FastAPI
+  useEffect(() => {
+    if (!form.subject_id) return undefined;
+
+    const controller = new AbortController();
+    fetchTopics({ subject_id: form.subject_id, signal: controller.signal })
+      .then((rows) => {
+        setSubjectTopics(Array.isArray(rows) ? rows : []);
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+        setSubjectTopics(null);
+      });
+
+    return () => controller.abort();
+  }, [form.subject_id]);
+
+  const availableTopics =
+    form.subject_id && subjectTopics !== null
+      ? subjectTopics
+      : getTopicsBySubject(form.subject_id);
 
   function handleChange(e) {
     const { name, value } = e.target;
 
+    if (name === "subject_id") {
+      setSubjectTopics(null);
+    }
+
     setForm((previous) => ({
       ...previous,
       [name]: value,
-      ...(name === "subject_id"
-        ? { topic_id: "" }
-        : {}),
+      ...(name === "subject_id" ? { topic_id: "" } : {}),
     }));
 
-    setMessage("");
     setError("");
-    setDuplicates([]);
   }
 
-  // Duplicate detection
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (submitting) return;
 
-  function handleDuplicateCheck() {
     setError("");
-    setMessage("");
 
-    if (!form.question.trim()) {
-      setError("Please enter a question first.");
+    const trimmedQuestion = form.question_text.trim();
+    if (!trimmedQuestion) {
+      setError("Question text is required.");
       return;
     }
 
-    const matches = checkDuplicate(
-      form.question,
-      id
-    );
-
-    setDuplicates(matches);
-
-    if (matches.length === 0) {
-      setMessage("No exact duplicate question found.");
+    if (!form.subject_id) {
+      setError("Please select a subject.");
+      return;
     }
-  }
 
-  // Create or update question
+    if (!form.topic_id) {
+      setError("Please select a topic for the chosen subject.");
+      return;
+    }
 
-function handleSubmit(e) {
-  e.preventDefault();
+    const selectedStatus = (
+      e.nativeEvent.submitter?.value || form.status || "draft"
+    ).toLowerCase();
 
-  setError("");
-  setMessage("");
+    const payload = {
+      subject_id: form.subject_id,
+      topic_id: form.topic_id,
+      question_text: trimmedQuestion,
+      difficulty: form.difficulty,
+      question_type: form.question_type,
+      answer: form.answer.trim() || null,
+      explanation: form.explanation.trim() || null,
+      status: selectedStatus,
+    };
 
-  const selectedStatus =
-    e.nativeEvent.submitter?.value ||
-    form.status;
-
-  const matches = checkDuplicate(
-    form.question,
-    id
-  );
-
-  if (matches.length > 0) {
-    setDuplicates(matches);
-
-    setError(
-      "Please resolve the duplicate question."
-    );
-
-    toast.error(
-      "Duplicate question detected."
-    );
-
-    return;
-  }
-
-  const questionData = {
-    ...form,
-    question: form.question.trim(),
-    subject_id: Number(form.subject_id),
-    topic_id: Number(form.topic_id),
-    answer: form.answer.trim(),
-    explanation: form.explanation.trim(),
-    status: selectedStatus,
-  };
-
-  try {
-    if (isEdit) {
-      updateQuestion(id, questionData);
-
-      toast.success(
-        "Question updated successfully!"
-      );
-
-    } else {
-      createQuestion(questionData);
-
-      if (selectedStatus === "Published") {
-        toast.success(
-          "Question published successfully!"
-        );
+    setSubmitting(true);
+    try {
+      if (isEdit) {
+        await updateAdminQuestion(id, payload);
+        toast.success("Question updated successfully!");
       } else {
+        await createAdminQuestion(payload);
         toast.success(
-          "Draft saved successfully!"
+          selectedStatus === "published"
+            ? "Question published successfully!"
+            : "Draft saved successfully!"
         );
       }
+
+      refreshMetadata();
+      navigate("/admin/questions");
+    } catch (err) {
+      const errorMessage = err.message || "Unable to save question.";
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setSubmitting(false);
     }
-
-    navigate("/admin/questions");
-
-  } catch (err) {
-    const errorMessage =
-      err.message || "Unable to save question.";
-
-    setError(errorMessage);
-
-    toast.error(errorMessage);
   }
-}
 
-  // Invalid question ID
+  const loadingQuestion = isEdit && loadedKey !== id;
 
-  if (isEdit && !existingQuestion) {
+  if (loadingQuestion) {
     return (
-      <div className="bg-white border rounded-xl p-8">
-        <h2 className="text-xl font-bold text-slate-900">
-          Question Not Found
-        </h2>
+      <div className="bg-white border border-slate-200 rounded-xl p-10 text-center text-sm text-slate-500">
+        Loading question details...
+      </div>
+    );
+  }
 
+  if (isEdit && loadError) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-8 space-y-4">
+        <h2 className="text-xl font-bold text-slate-900">Question Not Found</h2>
+        <p className="text-sm text-slate-500">{loadError}</p>
         <Link
           to="/admin/questions"
-          className="text-blue-600 inline-block mt-4"
+          className="text-blue-600 inline-block text-sm font-medium hover:underline"
         >
-          Back to Question Management
+          ← Back to Question Management
         </Link>
       </div>
     );
@@ -199,88 +219,56 @@ function handleSubmit(e) {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-
       {/* Breadcrumb */}
-
       <div className="text-sm text-slate-500">
-        <Link
-          to="/admin/questions"
-          className="hover:text-blue-600"
-        >
+        <Link to="/admin/questions" className="hover:text-blue-600">
           Question Management
         </Link>
-
         {" / "}
-
         {isEdit ? "Edit Question" : "Create Question"}
       </div>
 
       {/* Heading */}
-
       <div>
         <h1 className="text-3xl font-bold text-slate-900">
-          {isEdit
-            ? "Edit Question"
-            : "Create New Question"}
+          {isEdit ? "Edit Question" : "Create New Question"}
         </h1>
-
         <p className="text-slate-500 mt-2">
           {isEdit
-            ? "Update the existing question details."
+            ? "Update the question details in the database."
             : "Add a new question to the PrepVault question bank."}
         </p>
       </div>
 
-      {/* Demo Notice */}
-
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-700">
-        Frontend preview mode. Questions are saved locally
-        in your browser. No backend connection is active.
-      </div>
-
       {/* Main Form */}
-
       <form
         onSubmit={handleSubmit}
         className="bg-white border border-slate-200 rounded-xl shadow-sm"
       >
-
         <div className="p-7 space-y-6">
-
           {/* Question Text */}
-
           <div>
-            <label
-              htmlFor="question"
-              className={labelClass}
-            >
+            <label htmlFor="question_text" className={labelClass}>
               Question Text *
             </label>
-
             <textarea
-              id="question"
-              name="question"
+              id="question_text"
+              name="question_text"
               rows={4}
               required
               placeholder="Enter your question here..."
-              value={form.question}
+              value={form.question_text}
               onChange={handleChange}
               className={inputClass}
             />
           </div>
 
           {/* Subject and Topic */}
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
             <div>
-              <label
-                htmlFor="subject_id"
-                className={labelClass}
-              >
+              <label htmlFor="subject_id" className={labelClass}>
                 Subject *
               </label>
-
               <select
                 id="subject_id"
                 name="subject_id"
@@ -289,15 +277,9 @@ function handleSubmit(e) {
                 onChange={handleChange}
                 className={inputClass}
               >
-                <option value="">
-                  Select Subject
-                </option>
-
+                <option value="">Select Subject</option>
                 {subjects.map((subject) => (
-                  <option
-                    key={subject.id}
-                    value={subject.id}
-                  >
+                  <option key={subject.id} value={subject.id}>
                     {subject.name}
                   </option>
                 ))}
@@ -305,13 +287,9 @@ function handleSubmit(e) {
             </div>
 
             <div>
-              <label
-                htmlFor="topic_id"
-                className={labelClass}
-              >
+              <label htmlFor="topic_id" className={labelClass}>
                 Topic *
               </label>
-
               <select
                 id="topic_id"
                 name="topic_id"
@@ -322,36 +300,23 @@ function handleSubmit(e) {
                 className={`${inputClass} disabled:bg-slate-100 disabled:cursor-not-allowed`}
               >
                 <option value="">
-                  {form.subject_id
-                    ? "Select Topic"
-                    : "Select a subject first"}
+                  {form.subject_id ? "Select Topic" : "Select a subject first"}
                 </option>
-
                 {availableTopics.map((topic) => (
-                  <option
-                    key={topic.id}
-                    value={topic.id}
-                  >
+                  <option key={topic.id} value={topic.id}>
                     {topic.name}
                   </option>
                 ))}
               </select>
             </div>
-
           </div>
 
           {/* Difficulty and Question Type */}
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
             <div>
-              <label
-                htmlFor="difficulty"
-                className={labelClass}
-              >
+              <label htmlFor="difficulty" className={labelClass}>
                 Difficulty *
               </label>
-
               <select
                 id="difficulty"
                 name="difficulty"
@@ -360,24 +325,17 @@ function handleSubmit(e) {
                 className={inputClass}
               >
                 {difficulties.map((difficulty) => (
-                  <option
-                    key={difficulty}
-                    value={difficulty}
-                  >
-                    {difficulty}
+                  <option key={difficulty.value} value={difficulty.value}>
+                    {difficulty.label}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label
-                htmlFor="question_type"
-                className={labelClass}
-              >
+              <label htmlFor="question_type" className={labelClass}>
                 Question Type *
               </label>
-
               <select
                 id="question_type"
                 name="question_type"
@@ -386,28 +344,19 @@ function handleSubmit(e) {
                 className={inputClass}
               >
                 {questionTypes.map((type) => (
-                  <option
-                    key={type.value}
-                    value={type.value}
-                  >
+                  <option key={type.value} value={type.value}>
                     {type.label}
                   </option>
                 ))}
               </select>
             </div>
-
           </div>
 
           {/* Answer */}
-
           <div>
-            <label
-              htmlFor="answer"
-              className={labelClass}
-            >
+            <label htmlFor="answer" className={labelClass}>
               Answer
             </label>
-
             <textarea
               id="answer"
               name="answer"
@@ -417,22 +366,13 @@ function handleSubmit(e) {
               onChange={handleChange}
               className={inputClass}
             />
-
-            <p className="text-xs text-slate-500 mt-2">
-              An answer is required before publishing.
-            </p>
           </div>
 
           {/* Explanation */}
-
           <div>
-            <label
-              htmlFor="explanation"
-              className={labelClass}
-            >
+            <label htmlFor="explanation" className={labelClass}>
               Explanation
             </label>
-
             <textarea
               id="explanation"
               name="explanation"
@@ -445,15 +385,10 @@ function handleSubmit(e) {
           </div>
 
           {/* Status */}
-
           <div>
-            <label
-              htmlFor="status"
-              className={labelClass}
-            >
+            <label htmlFor="status" className={labelClass}>
               Question Status
             </label>
-
             <select
               id="status"
               name="status"
@@ -462,92 +397,16 @@ function handleSubmit(e) {
               className={inputClass}
             >
               {statuses
-                .filter(
-                  (status) =>
-                    isEdit || status !== "Disabled"
-                )
-                .map((status) => (
-                  <option
-                    key={status}
-                    value={status}
-                  >
-                    {status}
+                .filter((s) => isEdit || s.value !== "disabled")
+                .map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
                   </option>
                 ))}
             </select>
           </div>
 
-          {/* Tags */}
-
-          <div>
-            <label
-              htmlFor="tags"
-              className={labelClass}
-            >
-              Tags (Optional)
-            </label>
-
-            <input
-              id="tags"
-              name="tags"
-              placeholder="e.g. java, oops, interview"
-              value={form.tags}
-              onChange={handleChange}
-              className={inputClass}
-            />
-
-            <p className="text-xs text-slate-500 mt-2">
-              Separate tags using commas.
-            </p>
-          </div>
-
-          {/* Duplicate Detection Warning */}
-
-          {duplicates.length > 0 && (
-            <div className="bg-amber-50 border border-amber-300 rounded-xl p-5 space-y-4">
-
-              <h3 className="font-bold text-amber-800">
-                Duplicate Question Detected
-              </h3>
-
-              <p className="text-sm text-amber-700">
-                Matching questions already exist in the
-                question bank.
-              </p>
-
-              {duplicates.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white border border-amber-200 rounded-lg p-4"
-                >
-
-                  <p className="font-semibold text-slate-900">
-                    {item.question}
-                  </p>
-
-                  <p className="text-sm text-slate-500 mt-2">
-                    {getSubjectName(item.subject_id)}
-                    {" · "}
-                    {getTopicName(item.topic_id)}
-                    {" · "}
-                    {item.status}
-                  </p>
-
-                  <Link
-                    to={`/admin/questions/${item.id}/edit`}
-                    className="text-blue-600 text-sm inline-block mt-3"
-                  >
-                    Open Existing Question
-                  </Link>
-
-                </div>
-              ))}
-
-            </div>
-          )}
-
           {/* Error Message */}
-
           {error && (
             <div
               role="alert"
@@ -556,24 +415,10 @@ function handleSubmit(e) {
               {error}
             </div>
           )}
-
-          {/* Success Message */}
-
-          {message && (
-            <div
-              role="status"
-              className="bg-green-50 border border-green-200 text-green-700 rounded-lg p-4 text-sm"
-            >
-              {message}
-            </div>
-          )}
-
         </div>
 
         {/* Footer Buttons */}
-
         <div className="flex flex-wrap justify-between items-center gap-3 border-t border-slate-200 p-6">
-
           <Link
             to="/admin/questions"
             className="border border-slate-300 rounded-lg px-5 py-3 text-sm text-slate-600 hover:bg-slate-100"
@@ -582,39 +427,30 @@ function handleSubmit(e) {
           </Link>
 
           <div className="flex flex-wrap gap-3">
-
             <button
-              type="button"
-              onClick={handleDuplicateCheck}
-              className="border border-slate-300 text-slate-700 rounded-lg px-5 py-3 text-sm font-medium hover:bg-slate-100"
+              type="submit"
+              value="draft"
+              disabled={submitting}
+              className="border border-blue-600 text-blue-600 rounded-lg px-5 py-3 text-sm font-medium hover:bg-blue-50 disabled:opacity-50"
             >
-              Check Duplicate
+              {submitting ? "Saving..." : "Save Draft"}
             </button>
 
             <button
               type="submit"
-              value="Draft"
-              className="border border-blue-600 text-blue-600 rounded-lg px-5 py-3 text-sm font-medium hover:bg-blue-50"
+              value={isEdit ? form.status : "published"}
+              disabled={submitting}
+              className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-5 py-3 text-sm font-medium disabled:opacity-50"
             >
-              Save Draft
+              {submitting
+                ? "Saving..."
+                : isEdit
+                  ? "Save Changes"
+                  : "Publish Question"}
             </button>
-
-            <button
-              type="submit"
-              value={isEdit ? form.status : "Published"}
-              className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-5 py-3 text-sm font-medium"
-            >
-              {isEdit
-                ? "Save Changes"
-                : "Publish Question"}
-            </button>
-
           </div>
-
         </div>
-
       </form>
-
     </div>
   );
-} 
+}

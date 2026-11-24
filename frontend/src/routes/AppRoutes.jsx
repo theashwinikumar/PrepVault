@@ -6,7 +6,6 @@ import QuestionManagement from "../pages/admin/QuestionManagement.jsx";
 import AdminLayout from "../components/admin/AdminLayout.jsx";
 import AdminDashboard from "../pages/admin/AdminDashboard.jsx";
 import { Routes, Route } from "react-router-dom";
-import AdminSidebar from "../components/admin/AdminSidebar.jsx";
 
 import Home from "../pages/Home.jsx";
 import QuestionBank from "../pages/QuestionBank.jsx";
@@ -93,21 +92,21 @@ export default function AppRoutes() {
   <Route
     path="/admin/questions/published"
     element={
-      <QuestionManagement initialStatus="Published" />
+      <QuestionManagement initialStatus="published" />
     }
   />
 
   <Route
     path="/admin/questions/drafts"
     element={
-      <QuestionManagement initialStatus="Draft" />
+      <QuestionManagement initialStatus="draft" />
     }
   />
 
   <Route
     path="/admin/questions/disabled"
     element={
-      <QuestionManagement initialStatus="Disabled" />
+      <QuestionManagement initialStatus="disabled" />
     }
   />
 
