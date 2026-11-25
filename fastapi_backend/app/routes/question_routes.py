@@ -132,6 +132,14 @@ def get_all_questions(
         query = query.filter(
             Question.question_type == question_type.lower()
         )
+        
+    if company_id:
+        query = query.join(
+        QuestionCompany,
+        Question.id == QuestionCompany.question_id
+    ).filter(
+        QuestionCompany.company_id == company_id
+    )
 
     if status:
         allowed_statuses = ["draft", "published", "disabled"]
