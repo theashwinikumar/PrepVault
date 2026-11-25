@@ -1,7 +1,6 @@
 import csv
 import io
 from datetime import datetime, timezone
-from typing import Any
 
 from openpyxl import load_workbook
 from sqlalchemy.orm import Session
@@ -11,6 +10,8 @@ from app.models.subject import Subject
 from app.models.topic import Topic
 from app.models.question import Question
 from app.models.import_batch import ImportBatch
+from app.models.company import Company
+from app.models.question_company import QuestionCompany
 
 from app.utils.question_utils import (
     normalize_question,
@@ -175,13 +176,66 @@ def clean_optional_value(value):
     return value if value else None
 
 
+def parse_company_names(value):
+
+    if value is None:
+        return []
+
+    names = [
+        name.strip()
+        for name in str(value).split(",")
+        if name.strip()
+    ]
+
+    # Remove repeated names within the same cell.
+    unique_names = {}
+
+    for name in names:
+        unique_names[name.casefold()] = name
+
+    return list(unique_names.values())
+
+
+def get_matching_companies(db: Session, company_names):
+
+    if not company_names:
+        return []
+
+    companies = db.query(Company).all()
+
+    company_lookup = {
+        company.name.casefold(): company
+        for company in companies
+    }
+
+    matched_companies = []
+
+    unknown_companies = []
+
+    for name in company_names:
+
+        company = company_lookup.get(name.casefold())
+
+        if company:
+            matched_companies.append(company)
+        else:
+            unknown_companies.append(name)
+
+    if unknown_companies:
+        raise ValueError(
+            "Unknown company name(s): "
+            + ", ".join(unknown_companies)
+        )
+
+    return matched_companies
+
+
 def import_questions(
     db: Session,
     filename: str,
     content: bytes
 ):
 
-    # Parse and validate the file structure first.
     records = read_upload_file(filename, content)
 
     batch = ImportBatch(
@@ -227,6 +281,12 @@ def import_questions(
             status = str(
                 record.get("status") or "published"
             ).strip().lower()
+
+            # Read company names.
+
+            company_names = parse_company_names(
+                record.get("company_names")
+            )
 
             # Validate required values.
 
@@ -280,8 +340,7 @@ def import_questions(
 
             batch.valid_records += 1
 
-            # Check for duplicates in the database.
-            # This also detects earlier rows from this same batch.
+            # Check duplicates.
 
             duplicate = db.query(Question).filter(
                 Question.fingerprint == fingerprint
@@ -291,41 +350,55 @@ def import_questions(
                 batch.duplicate_records += 1
                 continue
 
-            # Create question.
+            # Match companies against existing records.
 
-            question = Question(
-                subject_id=subject.id,
-                topic_id=topic.id,
-                question_text=question_text,
-                normalized_text=normalized_text,
-                fingerprint=fingerprint,
-                difficulty=difficulty,
-                question_type=question_type,
-                answer=clean_optional_value(
-                    record.get("answer")
-                ),
-                explanation=clean_optional_value(
-                    record.get("explanation")
-                ),
-                status=status,
-                import_batch_id=batch.id
+            matched_companies = get_matching_companies(
+                db,
+                company_names
             )
 
-            # Savepoint: isolate this individual question.
+            # Insert question and company relationships
+            # inside the same savepoint.
 
             try:
 
                 with db.begin_nested():
 
+                    question = Question(
+                        subject_id=subject.id,
+                        topic_id=topic.id,
+                        question_text=question_text,
+                        normalized_text=normalized_text,
+                        fingerprint=fingerprint,
+                        difficulty=difficulty,
+                        question_type=question_type,
+                        answer=clean_optional_value(
+                            record.get("answer")
+                        ),
+                        explanation=clean_optional_value(
+                            record.get("explanation")
+                        ),
+                        status=status,
+                        import_batch_id=batch.id
+                    )
+
                     db.add(question)
+                    db.flush()
+
+                    for company in matched_companies:
+
+                        association = QuestionCompany(
+                            question_id=question.id,
+                            company_id=company.id
+                        )
+
+                        db.add(association)
+
                     db.flush()
 
                 batch.inserted_records += 1
 
             except IntegrityError:
-
-                # The unique fingerprint constraint may have
-                # rejected a concurrent duplicate insertion.
 
                 batch.duplicate_records += 1
 
